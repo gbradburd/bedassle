@@ -1,0 +1,39 @@
+Package: bedassle
+Title: Quantifies Effects of Geographic and Ecological Distance on Genetic Differentiation
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Gideon",
+           family = "Bradburd",
+           role = c("aut", "cre"),
+           email = "bradburd@msu.edu")
+Description: A method for modeling pairwise genetic distance as a function of geographic 
+	and ecological or environmental distance, for estimating the relative contributions 
+	of these distances to genetic differentiation, and for statistically comparing models 
+	with different distance predictors (e.g., geographic distance alone vs. geographic AND 
+	ecological distance). This package contains code for running analyses (which are 
+	implemented in the modeling language 'rstan') and visualizing and interpreting output. 
+License: GPL (>=3)
+Depends: 
+    methods,
+    R (>= 3.4.0),
+    Rcpp (>= 1.0.1)
+Imports: 
+    rstan (>= 2.18.2),
+    rstantools (>= 1.5.1),
+    gtools,
+    foreach,
+    parallel,
+    doParallel,
+    utils,
+    graphics
+LinkingTo: 
+    BH (>= 1.69.0-1),
+    Rcpp (>= 1.0.1),
+    RcppEigen (>= 0.3.3.5.0),
+    rstan (>= 2.18.2),
+    StanHeaders (>= 2.18.1)
+Encoding: UTF-8
+LazyData: true
+NeedsCompilation: yes
+SystemRequirements: GNU make
+RoxygenNote: 6.1.1

@@ -1,0 +1,16 @@
+.DS_Store
+*/.DS_Store
+*tar.gz
+sandbox/
+*/.Rapp.history
+.Rapp.history
+.RData
+*.Rout
+nohup.out
+src/*.so
+src/*.o
+src/stan_files/*.o
+src/stan_files/*.hpp
+2do_and_2figureout.txt
+"Icon\r"
+.dropbox

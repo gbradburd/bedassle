@@ -1,14 +1,15 @@
 
 ## BEDASSLE 2.0-a1 ReadMe
 
-**NOTE THIS PACKAGE IS STILL IN BETA**
+**NOTE THIS PACKAGE IS BEING ACTIVELY DEVELOPED AND SHOULD ONLY BE USED FOR TESTING PUPOSES**
 
 This repo contains the code for the method **BEDASSLE** - a statistical tool 
 for modeling pairwise genetic distance as a function of geographic and ecological 
 or environmental distance, for estimating the relative contributions of these 
 distances to genetic differentiation, and for statistically comparing models with 
 different distance predictors (e.g., geographic distance alone vs. geographic AND 
-ecological distance). BEDASSLE stands for: **B**ayesian **E**stimation of 
+ecological distance). BEDASSLE stands for: 
+**B**ayesian **E**stimation of 
 **D**ifferentiation in **A**lleles by **S**patial **S**tructure and **L**ocal **E**cology.
 
 This package replaces (**and is not backwards-compatible with**), BEDASSLE 1.0. The 

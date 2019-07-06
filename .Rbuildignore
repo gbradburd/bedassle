@@ -1,0 +1,14 @@
+^CRAN-RELEASE$
+.*\.tar\.gz$
+sandbox/*
+cran-comments.md
+README.md
+nohup.out
+\.Rapp.history
+man/bedassle-manual.pdf
+src/init.o
+src/bedassle.so
+src/stan_files/.*\.o$
+src/stan_files/.*\.hpp$
+notes_for_next.release.txt
+2do_and_2figureout.txt
