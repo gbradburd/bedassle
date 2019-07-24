@@ -88,6 +88,214 @@ x.validation <- function(partitions.file,n.replicates,n.partitions,geoDist=NULL,
     return(unlist(x.val))
 }
 
+#' Compare cross-validated BEDASSLE models
+#' 
+#' \code{compare.model.xvals} compares cross-validated BEDASSLE models
+#' 
+#' This function visually and statistically compares BEDASSLE models that 
+#' have been evaluated using cross-validation.
+#' 
+#' @param xval.files A \code{vector} of filenames (each in quotes, 
+#'		with the full file path), each element of which points to the 
+#'		cross-validation results file output by a call to 
+#'		\code{\link{x.validation}} for one of the models the user wants 
+#'		to compare.
+#' @param n.predictors A \code{vector} of \code{integer} values giving 
+#'		the number of predictors included in each of the BEDASSLE models 
+#'		tested with cross-validation. This argument should be the same as 
+#'		the length of the \code{vector} of filenames specified in 
+#'		\code{xval.files}.
+#' @param mod.cols An \code{vector} of colors to be used in plotting 
+#'		the results of the different BEDASSLE models. This argument should be 
+#'		the same length as the \code{vector} of filenames specified in 
+#'		\code{xval.files}. If \code{NULL}, all output will be plotted in 
+#'		black.
+#'
+#' @return This function creates a plot showing the predictive accuracies
+#'		of the different models evaluated using cross-validation. A higher 
+#'		predictive accuracy means the model is able to describe the data 
+#'		better. The plot shows mean predictive accuracy for each replicate, 
+#'		the mean across replicates, and the 95% confidence interval. A shared 
+#'		letter over a pair of models indicates that the predictive accuracies 
+#'		of those models are not significantly different using a paired, 
+#'		two-tailed t-test with a significance level of 0.05.
+#'
+#'		The function returns a matrix giving the significance of the difference 
+#'		between the predictive accuracies of the different models evaluted using 
+#'		k-fold cross-validation in the function \code{\link{x.validation}}
+#'		analysis.
+#'
+#' Note that \code{n.predictors} is the number of predictor variables in the 
+#' relevant model. The null model, with neither geographic nor environmental 
+#' distance, has 0 predictors, a model with just geographic distance has 1 
+#' predictor, as does a model with just a single environmental distance 
+#' variable, and a model with both geographic distance and an environmental 
+#' distance predictor has 2 predictors.
+#' 
+#'@export
+
+compare.model.xvals <- function(xval.files,n.predictors,mod.cols=NULL){
+	check.compare.mod.xvals.call(args <- as.list(environment()))
+	# maybe standardize by best xval w/in each partition?
+	n.models <- length(xval.files)
+	if(is.null(mod.cols)){
+		mod.cols <- rep(1,n.models)
+	}
+	xval.results <- lapply(xval.files,function(n){read.xval.results(n)})
+	n.replicates <- ncol(xval.results[[1]])
+	xval.results <- lapply(xval.results,function(x){colMeans(x)})
+	plot(0,xlim=c(0.5,length(xval.files)+0.5),
+		   ylim=range(unlist(xval.results))+c(0,diff(range(unlist(xval.results)))/5),
+		   xlab="models (# predictors)",
+		   xaxt="n",
+		   ylab="predictive accuracy",
+		   main="cross-validation model comparison",
+		   type="n")
+	graphics::axis(side=1,at=1:n.models,labels=sapply(1:n.models,function(i){paste0("mod",i," (",n.predictors[i],")")}))
+	pairwise.sigs <- ttest.all.mod.xvals(xval.results,n.predictors,n.models)
+	groups <- get.sig.groups(pairwise.sigs,n.models)
+	group.labels <- groups2labels(groups,n.models)
+	lab.ycoord <- graphics::par("usr")[4] - diff(range(unlist(xval.results)))/10
+	invisible(lapply(1:n.models,
+		function(i){
+			plot.mod.xval.summary(i,summarize.mod.xval(xval.results[[i]]),mod.cols[i])
+			graphics::points(x=jitter(rep(i,n.replicates)),
+					y=xval.results[[i]],
+					pch=20,col=grDevices::adjustcolor(mod.cols[i],0.5))
+			graphics::text(x=i,y=lab.ycoord,labels= group.labels[[i]],col=mod.cols[i])
+		}))
+	return(pairwise.sigs)
+}
+
+ttest.all.mod.xvals <- function(xval.results,n.predictors,n.models){
+	pairwise.sigs <- matrix(NA,nrow=n.models,ncol=n.models)
+	for(i in 1:n.models){
+		for(j in 1:n.models){
+			if(i != j){
+				pairwise.sigs[i,j] <- pairwise.mod.xval.ttest(xval.results[[i]],xval.results[[j]],n.predictors[i],n.predictors[j])
+			}
+		}
+	}
+	return(pairwise.sigs)
+}
+
+groups2labels <- function(groups,n.models){
+	mod.letts <- LETTERS[1:length(groups)]
+	mod.labs <- character(n.models)
+	for(i in 1:length(groups)){
+		for(j in 1:length(groups[[i]])){
+			mod.labs[groups[[i]][j]] <- paste0(mod.labs[groups[[i]][j]],mod.letts[i],collapse="")
+		}
+	}
+	return(mod.labs)
+}
+
+get.sig.groups <- function(pairwise.sigs,n.models){
+	groups <- list("group1"=1)
+	groups[[1]] <- c(groups[[1]],which(pairwise.sigs[1,] > 0.05))
+	n.groups <- 1
+	for(i in 2:n.models){
+		if(any(pairwise.sigs[i,] > 0.05,na.rm=TRUE)){
+			groups <- c(groups, i)
+			n.groups <- n.groups + 1
+			names(groups)[length(groups)] <- sprintf("group%s",n.groups)
+			groups[[n.groups]] <- c(groups[[n.groups]],which(pairwise.sigs[i,] > 0.05))
+		} else {
+			groups <- c(groups, i)
+			n.groups <- n.groups + 1
+			names(groups)[length(groups)] <- sprintf("group%s",n.groups)
+		}
+	}
+	groups <- collapse.ident.groups(groups)
+	return(groups)
+}
+
+collapse.ident.groups <- function(groups){
+	n.groups <- length(groups)
+	ident <- matrix(0,n.groups,n.groups)
+	for(i in 1:(n.groups-1)){
+		for(j in (i+1):n.groups){
+			if(setequal(sort(groups[[i]]),sort(groups[[j]]))){
+				ident[i,j] <- 1
+			}
+		}
+	}
+	if(any(ident==1)){
+		groups[[which(ident==1,arr.ind=TRUE)[,2]]] <- NULL
+	}
+	return(groups)
+}
+
+pairwise.mod.xval.ttest <- function(xvals1,xvals2,np1,np2){
+	pval <- stats::t.test(x=xvals2,y=xvals1,paired=TRUE,alternative="two.sided")$p.value	
+	return(pval)
+}
+
+check.compare.mod.xvals.call <- function(args){
+	check.xval.files.arg(args[["xval.files"]])
+	check.n.predictors.arg(args)
+	check.xval.cols.arg(args)
+	return(invisible("compare model xval args checked"))
+}
+
+check.xval.files.arg <- function(xval.files){
+	if(length(xval.files) < 2){
+		stop("\nyou must specify more than 1 x.validation output file to compare\n")
+	}
+	if(any(!is.character(xval.files))){
+		stop("\nyou must specify a character vector for the \"xval.files\" argument\n")
+	}
+	if(any(!file.exists(xval.files))){
+		stop("\nfunction is unable to find an \"xval.file\" specified\n")
+	}
+	return(invisible("xval.files checked"))
+}
+
+check.n.predictors.arg <- function(args){
+	if(length(args[["n.predictors"]]) != length(args[["xval.files"]])){
+		stop("\nyou must specify a number of predictors for each model\n")
+	}
+	if(any(!is.numeric(args[["n.predictors"]]))){
+		stop("\nthe values of the \"n.predictors\" argument must all be numeric\n")
+	}
+	if(any(args[["n.predictors"]] < 0)){
+		stop("\nthe values of the \"n.predictors\" argument must all be greater than or equal to 0\n")
+	}
+	if(any(!sapply(args[["n.predictors"]],is.whole.number))){
+		stop("\nthe values of the \"n.predictors\" argument must all be integers\n")
+	}
+	return(invisible("n.predictor arg checked"))
+}
+
+check.xval.cols.arg <- function(args){
+	if(!is.null(args[["mod.cols"]])){
+		if(length(args[["mod.cols"]]) != length(args[["xval.files"]])){
+			stop("\nyou must specify one plotting color for each model\n")
+		}
+	}
+	return(invisible("xval.mod.cols checked"))
+}
+
+read.xval.results <- function(xval.file){
+	xval.result <- data.matrix(utils::read.table(xval.file,stringsAsFactors=FALSE,header=TRUE))
+	return(xval.result)
+}
+
+summarize.mod.xval <- function(mod.xval.results){
+	xval.mean <- mean(mod.xval.results)
+	xval.std.err <- stats::sd(mod.xval.results)/sqrt(length(mod.xval.results))
+	xval.CI <- xval.mean + c(-1.96,1.96) * xval.std.err
+	mod.xval.summary <- list("mean" = xval.mean,
+							 "CI" = xval.CI)
+	return(mod.xval.summary)
+}
+
+plot.mod.xval.summary <- function(i,mod.xval.summary,mod.col=1){
+	graphics::segments(x0=i,x1=i,y0=mod.xval.summary$CI[1],y1=mod.xval.summary$CI[2],lwd=1.8,col=mod.col)
+	graphics::points(i,mod.xval.summary$mean,pch=19,cex=1.8,col=mod.col)
+	return(invisible("plotted"))
+}
+
 xval.bedassle.rep <- function(rep,n.partitions,geoDist,envDist,nLoci,prefix,n.chains,n.iter,save.files,...){
 	kfold.partitions <- make.kfold.partitions(rep,n.partitions)
     x.val <- lapply(1:n.partitions,function(k){
