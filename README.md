@@ -28,7 +28,7 @@ To install from github:
 
 ```r
 	library(devtools)
-	install_github("gbradburd/bedassle",build_vignettes=TRUE)
+	install_github("gbradburd/bedassle")
 ```
 
 Note that Windows users may have to download Rtools as a 
@@ -37,6 +37,6 @@ standalone executable before trying to install the **BEDASSLE** R package.
 
 ## Contact
 
-After referring to the manual and vignettes, 
+After referring to the manual, 
 please direct all queries to bradburd (at) msu.edu, 
 or post as issues on the git repo.
