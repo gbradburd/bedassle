@@ -26,14 +26,19 @@ the same length as the \code{vector} of filenames specified in
 black.}
 }
 \value{
-This function creates a plot showing the predictive accuracies
-	of the different models evaluated using cross-validation. A higher 
-	predictive accuracy means the model is able to describe the data 
-	better. The plot shows mean predictive accuracy for each replicate, 
-	the mean across replicates, and the 95% confidence interval. A shared 
+This function creates a plot showing the standardized predictive 
+	accuracies of the different models evaluated using cross-validation. 
+	A higher predictive accuracy means the model is able to describe the 
+	data better. The plot shows mean standardized predictive accuracy for 
+	each replicate, the mean across replicates, and the 95% confidence 
 	letter over a pair of models indicates that the predictive accuracies 
-	of those models are not significantly different using a paired, 
-	two-tailed t-test with a significance level of 0.05.
+	interval. A shared of those models are not significantly different 
+	using a paired, two-tailed t-test with a significance level of 0.05.
+
+	The predictive accuracies are standardized by, for each partition in 
+	each replicate, subtracting the highest predictive accuracy from the  
+	predictive accuracies of the other models. Therefore, a predictive 
+	accuracy of 0 is the best score.
 
 	The function returns a matrix giving the significance of the difference 
 	between the predictive accuracies of the different models evaluted using 

@@ -111,14 +111,19 @@ x.validation <- function(partitions.file,n.replicates,n.partitions,geoDist=NULL,
 #'		\code{xval.files}. If \code{NULL}, all output will be plotted in 
 #'		black.
 #'
-#' @return This function creates a plot showing the predictive accuracies
-#'		of the different models evaluated using cross-validation. A higher 
-#'		predictive accuracy means the model is able to describe the data 
-#'		better. The plot shows mean predictive accuracy for each replicate, 
-#'		the mean across replicates, and the 95% confidence interval. A shared 
+#' @return This function creates a plot showing the standardized predictive 
+#'		accuracies of the different models evaluated using cross-validation. 
+#'		A higher predictive accuracy means the model is able to describe the 
+#'		data better. The plot shows mean standardized predictive accuracy for 
+#'		each replicate, the mean across replicates, and the 95% confidence 
 #'		letter over a pair of models indicates that the predictive accuracies 
-#'		of those models are not significantly different using a paired, 
-#'		two-tailed t-test with a significance level of 0.05.
+#'		interval. A shared of those models are not significantly different 
+#'		using a paired, two-tailed t-test with a significance level of 0.05.
+#'
+#'		The predictive accuracies are standardized by, for each partition in 
+#'		each replicate, subtracting the highest predictive accuracy from the  
+#'		predictive accuracies of the other models. Therefore, a predictive 
+#'		accuracy of 0 is the best score.
 #'
 #'		The function returns a matrix giving the significance of the difference 
 #'		between the predictive accuracies of the different models evaluted using 
@@ -136,12 +141,12 @@ x.validation <- function(partitions.file,n.replicates,n.partitions,geoDist=NULL,
 
 compare.model.xvals <- function(xval.files,n.predictors,mod.cols=NULL){
 	check.compare.mod.xvals.call(args <- as.list(environment()))
-	# maybe standardize by best xval w/in each partition?
 	n.models <- length(xval.files)
 	if(is.null(mod.cols)){
 		mod.cols <- rep(1,n.models)
 	}
 	xval.results <- lapply(xval.files,function(n){read.xval.results(n)})
+	xval.results <- standardize.xval.results(xval.results)
 	n.replicates <- ncol(xval.results[[1]])
 	xval.results <- lapply(xval.results,function(x){colMeans(x)})
 	plot(0,xlim=c(0.5,length(xval.files)+0.5),
@@ -221,7 +226,7 @@ collapse.ident.groups <- function(groups){
 		}
 	}
 	if(any(ident==1)){
-		groups[[which(ident==1,arr.ind=TRUE)[,2]]] <- NULL
+		groups[unique(which(ident==1,arr.ind=TRUE)[,2])] <- NULL
 	}
 	return(groups)
 }
@@ -279,6 +284,23 @@ check.xval.cols.arg <- function(args){
 read.xval.results <- function(xval.file){
 	xval.result <- data.matrix(utils::read.table(xval.file,stringsAsFactors=FALSE,header=TRUE))
 	return(xval.result)
+}
+
+standardize.xval.results <- function(xval.results){
+	n.models <- length(xval.results)
+	n.replicates <- ncol(xval.results[[1]])
+	n.partitions <- nrow(xval.results[[1]])
+	std.xval.array <- array(NA,dim=c(n.partitions,n.replicates,n.models))
+	for(i in 1:n.models){
+		std.xval.array[,,i] <- xval.results[[i]]
+	}
+	for(i in 1:n.partitions){
+		for(j in 1:n.replicates){
+			std.xval.array[i,j,] <- std.xval.array[i,j,] - max(std.xval.array[i,j,]) 
+		}
+	}
+	std.xval.results <- lapply(1:n.models,function(i){std.xval.array[,,i]})
+	return(std.xval.results)
 }
 
 summarize.mod.xval <- function(mod.xval.results){
