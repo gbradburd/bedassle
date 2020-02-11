@@ -146,14 +146,14 @@ compare.model.xvals <- function(xval.files,n.predictors,mod.cols=NULL){
 		mod.cols <- rep(1,n.models)
 	}
 	xval.results <- lapply(xval.files,function(n){read.xval.results(n)})
-	xval.results <- standardize.xval.results(xval.results)
+	#xval.results <- standardize.xval.results(xval.results)
 	n.replicates <- ncol(xval.results[[1]])
 	xval.results <- lapply(xval.results,function(x){colMeans(x)})
 	plot(0,xlim=c(0.5,length(xval.files)+0.5),
 		   ylim=range(unlist(xval.results))+c(0,diff(range(unlist(xval.results)))/5),
 		   xlab="models (# predictors)",
 		   xaxt="n",
-		   ylab="predictive accuracy",
+		   ylab="standardized predictive accuracy",
 		   main="cross-validation model comparison",
 		   type="n")
 	graphics::axis(side=1,at=1:n.models,labels=sapply(1:n.models,function(i){paste0("mod",i," (",n.predictors[i],")")}))

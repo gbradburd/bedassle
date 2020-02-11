@@ -4,9 +4,21 @@
 \alias{x.validation}
 \title{Run a BEDASSLE cross-validation analysis}
 \usage{
-x.validation(partitions.file, n.replicates, n.partitions, geoDist = NULL,
-  envDist = NULL, nLoci, prefix, n.iter = 2000, n.chains = 2,
-  parallel = FALSE, n.nodes = 1, save.files = FALSE, ...)
+x.validation(
+  partitions.file,
+  n.replicates,
+  n.partitions,
+  geoDist = NULL,
+  envDist = NULL,
+  nLoci,
+  prefix,
+  n.iter = 2000,
+  n.chains = 2,
+  parallel = FALSE,
+  n.nodes = 1,
+  save.files = FALSE,
+  ...
+)
 }
 \arguments{
 \item{partitions.file}{A filename (in quotes, 

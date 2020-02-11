@@ -4,8 +4,15 @@
 \alias{structure2bedassle}
 \title{Convert a dataset from STRUCTURE to BEDASSLE format}
 \usage{
-structure2bedassle(infile, onerowperind, start.loci, start.samples = 1,
-  missing.datum, prefix, save.freqs = TRUE)
+structure2bedassle(
+  infile,
+  onerowperind,
+  start.loci,
+  start.samples = 1,
+  missing.datum,
+  prefix,
+  save.freqs = TRUE
+)
 }
 \arguments{
 \item{infile}{The name and path of the file in STRUCTURE format 

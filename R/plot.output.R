@@ -41,8 +41,6 @@
 #'			\item lpd - A plot of the log posterior probability over the MCMC.
 #'			\item nuggets - A plot of estimates of the nugget parameters 
 #'				over the MCMC.
-#'			\item gamma - A plot of estimates of the gamma parameter 
-#'				over the MCMC.
 #'			\item alpha parameters - Plots of estimates of the 
 #'				various parameters (all or some of {alpha0,alphaD,alphaE,alpha2}, 
 #'				depending on the model specified) over the MCMC.
@@ -69,7 +67,9 @@ make.all.bedassle.plots <- function(results.files,data.block.file,prefix,chain.c
 	grDevices::pdf(file=paste0(prefix,"_trace.plots.pdf"))
 		plot.lpd(bedassle.results,chain.cols)
 		plot.nuggets(bedassle.results,chain.cols)
-		plot.gamma(bedassle.results,chain.cols)
+		if(is.null(data.block$geoDist) & is.null(data.block$envDist)){
+			plot.alpha0(bedassle.results,chain.cols)
+		}
 		if(!is.null(data.block$geoDist) | !is.null(data.block$envDist)){
 			plot.alpha.params(data.block,bedassle.results,chain.cols)
 		}
@@ -144,13 +144,13 @@ plot.lpd <- function(bedassle.results,chain.cols){
 	return(invisible(0))
 }
 
-plot.gamma <- function(bedassle.results,chain.cols){
-	gamma <- extract.x(bedassle.results,"gamma")
-	graphics::matplot(t(gamma),
-			ylab="gamma",
+plot.alpha0 <- function(bedassle.results,chain.cols){
+	alpha0 <- extract.x(bedassle.results,"alpha0")
+	graphics::matplot(t(alpha0),
+			ylab="alpha0",
 			xlab="MCMC iterations",
 			type='l',lty=1,lwd=1.2,
-			main="Gamma",col=chain.cols)
+			main="alpha0",col=chain.cols)
 	return(invisible(0))
 }
 

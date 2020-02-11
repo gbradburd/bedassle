@@ -52,7 +52,6 @@
 #'					\itemize{
 #'						\item \code{lpd} log posterior density over the retained 
 #'								MCMC iterations.
-#'						\item \code{gamma} posterior draws for gamma parameter.
 #'						\item \code{alpha0} posterior draws for alpha0 parameter.
 #'						\item \code{alphaD} posterior draws for alphaD parameter.
 #'						\item \code{alphaE} posterior draws for alphaE parameter(s).
@@ -77,6 +76,7 @@
 #'			then formatted into a \code{data.block},
 #'			which is then passed to the STAN model block.
 #'			The model output is written to three tab-delimited text files described above.
+#'			The parameter values are rounded to 4 decimal places
 #'			The full \code{stanfit} model output is also saved if \code{save.stanfit=TRUE}.
 #'			If \code{make.figs=TRUE}, running \code{run.bedassle} will also generate figures
 #'			depicting different aspects of model output; these are detailed in the function 

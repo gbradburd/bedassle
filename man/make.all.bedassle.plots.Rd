@@ -4,8 +4,12 @@
 \alias{make.all.bedassle.plots}
 \title{Make output plots}
 \usage{
-make.all.bedassle.plots(results.files, data.block.file, prefix,
-  chain.cols = NULL)
+make.all.bedassle.plots(
+  results.files,
+  data.block.file,
+  prefix,
+  chain.cols = NULL
+)
 }
 \arguments{
 \item{results.files}{A \code{vector} of the filenames (in quotes, 
@@ -55,8 +59,6 @@ see fit. The plots generated (as .pdf files) are:
 	\itemize{
 		\item lpd - A plot of the log posterior probability over the MCMC.
 		\item nuggets - A plot of estimates of the nugget parameters 
-			over the MCMC.
-		\item gamma - A plot of estimates of the gamma parameter 
 			over the MCMC.
 		\item alpha parameters - Plots of estimates of the 
 			various parameters (all or some of {alpha0,alphaD,alphaE,alpha2}, 

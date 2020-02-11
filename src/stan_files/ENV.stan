@@ -21,7 +21,7 @@ functions {
 		}
 		return Edist;
 	}
-	matrix spCov(int N, real a0, real a2,  vector nugget, vector aE, matrix[] sqE,  real gamma, int nE) {
+	matrix spCov(int N, real a0, real a2,  vector nugget, vector aE, matrix[] sqE,  int nE) {
 		matrix[N,N] parCov;
 		matrix[N,N] Nug_mat;
 		matrix[N,N] Edist;
@@ -34,7 +34,7 @@ functions {
 			}
 		}
 		for(i in 1:N) parCov[i,i] = a0;
-		parCov += gamma + Nug_mat;				// parametric covariance is is prior matrix plus gamma and nugget matrices
+		parCov += Nug_mat;				// parametric covariance is is prior matrix plus nugget matrix
 		return parCov;	
 	}
 }
@@ -55,18 +55,16 @@ parameters {
 	real<lower=0> alpha0;				// sill of the parametric covariance 
 	vector<lower=0>[nE] alphaE;			// vector of effects of ecological distance in the parametric covariance
 	real<lower=0, upper=2>  alpha2;		// exponential slope parameter in the parametric covariance
-	real<lower=0> gamma;				// covariance between all samples
   	vector<lower=0>[N] nugget; 			// sample-specific variance (allele sampling error + sample-specific drift)
 }
 transformed parameters {
 	matrix[N,N] parCov;					// this specifies the parametric covariance matrix
-	parCov = spCov(N, alpha0,  alpha2, nugget, alphaE, sqE, gamma, nE);
+	parCov = spCov(N, alpha0,  alpha2, nugget, alphaE, sqE, nE);
 }
 model {
 	alpha0 ~ normal(0,1);				// prior on alpha0
 	alphaE ~ normal(0,1);				// prior on alphaE
 	alpha2 ~ uniform(0,2);				// prior on alpha2
 	nugget ~ normal(0,1);				// prior on nugget
-	gamma ~ normal(0.15,10);				// prior on global covariance
 	LobsCov ~ wishart(L,parCov);		// likelihood function
 }
