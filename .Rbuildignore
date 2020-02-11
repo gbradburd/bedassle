@@ -1,4 +1,4 @@
-^CRAN-RELEASE$
+CRAN-RELEASE$
 .*\.tar\.gz$
 sandbox/*
 cran-comments.md
@@ -12,3 +12,4 @@ src/stan_files/.*\.o$
 src/stan_files/.*\.hpp$
 notes_for_next.release.txt
 2do_and_2figureout.txt
+Icon*
