@@ -5,15 +5,15 @@
 #' This function initiates a k-fold cross-validation analysis 
 #' to determine the statistical support for the specified model.
 #' 
-#' @param partitions.file A filename (in quotes, 
+#' @param partsFile A filename (in quotes, 
 #'		with the full file path) to the data partitions object to be used 
 #'		in the k-fold cross-validation procedure.
-#' @param n.replicates An \code{integer} giving the number of cross-validation
+#' @param nReplicates An \code{integer} giving the number of cross-validation
 #'		replicates to be run. This should be the same as the length of the list 
-#'		specified in the \code{partitions.file}.
-#' @param n.partitions An \code{integer} giving the number of data folds 
+#'		specified in the \code{partsFile}.
+#' @param nPartitions An \code{integer} giving the number of data folds 
 #'		within each run. This should be the same as the length of each the 
-#'		list specified for each replicate in the \code{partitions.file}.
+#'		list specified for each replicate in the \code{partsFile}.
 #' @param geoDist A \code{matrix} of pairwise geographic distances 
 #'		measured between all pairs of samples. A value of 
 #'		\code{NULL} runs a model without geographic distance 
@@ -26,7 +26,7 @@
 #'		distance as a predictor of genetic differentiation.
 #' @param nLoci The total number of loci across all data partitions		
 #'		(the sum across data partitions of the number of loci used in 
-#'		calculating pairwise pi specified in the \code{partitions.file} argument.
+#'		calculating pairwise pi specified in the \code{partsFile} argument.
 #' @param prefix A character \code{vector} giving the prefix to be attached 
 #'		to all output files.
 #' @param n.iter An \code{integer} giving the number of iterations each MCMC 
@@ -47,8 +47,8 @@
 #'		Default is \code{FALSE}.
 #' @param ... Further options to be passed to rstan::sampling (e.g., adapt_delta).
 #'	
-#' @return This function returns a matrix with \code{n.replicates} columns and 
-#'		\code{n.partitions} columns giving the likelihood of each data partition 
+#' @return This function returns a matrix with \code{nReplicates} columns and 
+#'		\code{nPartitions} columns giving the likelihood of each data partition 
 #'		(averaged over the posterior distribution of the MCMC) in each replicate 
 #'		analysis. The mean of these values gives an estimate of the predictive 
 #'		accuracy of the specified model given the data provided. The mean and 
@@ -59,18 +59,18 @@
 #' containing the returned likelihoods for each replicate and data partition.
 #'
 #'@export
-x.validation <- function(partitions.file,n.replicates,n.partitions,geoDist=NULL,envDist=NULL,nLoci,prefix,n.iter=2e3,n.chains=2,parallel=FALSE,n.nodes=1,save.files=FALSE,...){
-	check.xval.call(args <- as.list(environment()))
-	rep.partitions <- load.partitions.file(partitions.file)
-	check.rep.partitions.arg(rep.partitions,n.replicates,n.partitions,geoDist,envDist)
-	message(announce.xval.procedure(n.replicates,n.partitions,nLoci,geoDist,envDist))
+x.validation <- function(partsFile,nReplicates,nPartitions,geoDist=NULL,envDist=NULL,nLoci,prefix,n.iter=2e3,n.chains=2,parallel=FALSE,n.nodes=1,save.files=FALSE,...){
+	#check.xval.call(args <- as.list(environment()))
+	parts <- load.partitions.file(partsFile)
+	#check.rep.partitions.arg(parts,nReplicates,nPartitions,geoDist,envDist)
+	#message(announce.xval.procedure(nReplicates,nPartitions,nLoci,geoDist,envDist))
 	prespecified <- parallel.prespecify.check(args <- as.list(environment()))
 	`%d%` <- parallelizing(args <- as.list(environment()))
 	n <- 1
-    x.val <- foreach::foreach(n=1:n.replicates) %d% {
-				    message(sprintf("\nk-fold cross-validation: analyzing replicate %s/%s\n",n,n.replicates));
-        				xval.bedassle.rep(rep = rep.partitions[[n]],
-        								  n.partitions = n.partitions,
+    x.val <- foreach::foreach(n=1:nReplicates) %d% {
+				    message(sprintf("\nk-fold cross-validation: analyzing replicate %s/%s\n",n,nReplicates));
+        				xval.bedassle.rep(rep = parts[[n]],
+        								  nPartitions = nPartitions,
         								  geoDist = geoDist,
         								  envDist = envDist,
         								  nLoci = nLoci,
@@ -82,10 +82,76 @@ x.validation <- function(partitions.file,n.replicates,n.partitions,geoDist=NULL,
     			 }
 	x.val <- lapply(x.val,round,4)
 	x.val <- Reduce("cbind",x.val)
-	colnames(x.val) <- paste0("rep_",1:n.replicates)
-	write.xvals(x.val,n.replicates,n.partitions,prefix)
+	colnames(x.val) <- paste0("rep_",1:nReplicates)
+	write.xvals(x.val,nReplicates,nPartitions,prefix)
 	tmp <- end.parallelization(prespecified)
     return(unlist(x.val))
+}
+
+
+#' Run a BEDASSLE cross-validation analysis
+#' 
+#' \code{x.validation} runs a BEDASSLE cross-validation analysis
+#' 
+#' This function initiates a k-fold cross-validation analysis 
+#' to determine the statistical support for the specified model.
+#' 
+#' @param prefix A character \code{vector} giving the prefix to be attached 
+#'		to the output data partitions object to be used in the k-fold 
+#'		cross-validation procedure.
+#' @param nReplicates An \code{integer} giving the number of cross-validation
+#'		replicates to be run. The default value is 10.
+#' @param nPartitions An \code{integer} giving the number of data folds 
+#'		within each run. The default value is 5.
+#' @param N An \code{integer} giving the number of samples in the dataset.
+#'		This should have the same value as \code{nrow(geoDist)}.
+#' @param relMat A \code{matrix} of pairwise genetic distances 
+#'		measured between all pairs of samples.
+#' @param nLoci The total number of loci in the dataset.
+#'	
+#' @return This function generates and saves a nested list R object (".Robj" file) 
+#'		that can be used to run a cross-validation analysis. This R object is a list 
+#'		of length \code{nReplicates}, each element of which is a list of length 
+#'		\code{nPartitions}. The contents of each of those \code{nPartitions} elements 
+#'		is given below:
+#'		\itemize{
+#'			\item trainBlock
+#'				\itemize{
+#'					\item N the number of samples in the training data partition
+#'					\item L the number of loci in the dataset
+#'					\item obsCov the pairwise relatedness matrix between 
+#'						all samples in the training data partition
+#'				}
+#'			\item testBlock
+#'				\itemize{
+#'					\item N the number of samples in the testing data partition
+#'					\item L the number of loci in the dataset
+#'					\item obsCov the pairwise relatedness matrix between 
+#'						all samples in the testing data partition
+#'				}
+#'			\item inTest the indices of the samples in the testing data partition
+#'		}
+#'
+#'
+#'@export
+makePartitions <- function(prefix,nReplicates=10,nPartitions=5,N,relMat,nLoci){
+	parts <- lapply(1:nReplicates,
+				function(n){
+					reorderedSamples <- sample(1:N,N,replace=FALSE)
+					nInPart <- N/nPartitions
+					repParts <- lapply(1:nPartitions,
+								function(i){
+									makePartition(N = N,
+												  relMat = relMat,
+												  nLoci = nLoci,
+												  inTest=reorderedSamples[((i-1)*nInPart+1):(i*nInPart)])
+								})
+				stats::setNames(repParts,paste0("partition",1:nPartitions))				
+			})
+	parts <- stats::setNames(parts,paste0("rep",1:nReplicates))
+	save(parts,file=paste0(prefix,"_partitions.Robj"))
+	message("\npartitions file saved\n")
+	return(invisible("done"))
 }
 
 #' Compare cross-validated BEDASSLE models
@@ -146,11 +212,12 @@ compare.model.xvals <- function(xval.files,n.predictors,mod.cols=NULL){
 		mod.cols <- rep(1,n.models)
 	}
 	xval.results <- lapply(xval.files,function(n){read.xval.results(n)})
-	#xval.results <- standardize.xval.results(xval.results)
-	n.replicates <- ncol(xval.results[[1]])
-	xval.results <- lapply(xval.results,function(x){colMeans(x)})
+#	xval.results <- standardize.xval.results(xval.results)
+	nReplicates <- ncol(xval.results[[1]])
+	xval.results <- lapply(xval.results,function(x){colMeans(x,na.rm=TRUE)})
+	yLim <- range(unlist(xval.results),na.rm=TRUE)+c(0,diff(range(unlist(xval.results),na.rm=TRUE))/5)
 	plot(0,xlim=c(0.5,length(xval.files)+0.5),
-		   ylim=range(unlist(xval.results))+c(0,diff(range(unlist(xval.results)))/5),
+		   ylim=yLim,
 		   xlab="models (# predictors)",
 		   xaxt="n",
 		   ylab="standardized predictive accuracy",
@@ -158,18 +225,82 @@ compare.model.xvals <- function(xval.files,n.predictors,mod.cols=NULL){
 		   type="n")
 	graphics::axis(side=1,at=1:n.models,labels=sapply(1:n.models,function(i){paste0("mod",i," (",n.predictors[i],")")}))
 	pairwise.sigs <- ttest.all.mod.xvals(xval.results,n.predictors,n.models)
-	groups <- get.sig.groups(pairwise.sigs,n.models)
-	group.labels <- groups2labels(groups,n.models)
-	lab.ycoord <- graphics::par("usr")[4] - diff(range(unlist(xval.results)))/10
+	group.labels <- get.sig.groups(pairwise.sigs,n.models)
+	lab.ycoord <- graphics::par("usr")[4] - diff(range(unlist(xval.results),na.rm=TRUE))/10
 	invisible(lapply(1:n.models,
 		function(i){
 			plot.mod.xval.summary(i,summarize.mod.xval(xval.results[[i]]),mod.cols[i])
-			graphics::points(x=jitter(rep(i,n.replicates)),
+			graphics::points(x=jitter(rep(i,nReplicates)),
 					y=xval.results[[i]],
 					pch=20,col=grDevices::adjustcolor(mod.cols[i],0.5))
 			graphics::text(x=i,y=lab.ycoord,labels= group.labels[[i]],col=mod.cols[i])
 		}))
+	# bestMod <- whichMod(xval.files)
+	# bestMod <- switch(bestMod,"null"=1,"ibd"=2,"ibe"=3,"ibde"=4)
+	# arrows(x0=bestMod,
+		   # x1=bestMod,
+		   # y0=min(xval.results[[bestMod]])-2*diff(yLim)/10,
+		   # y1=min(xval.results[[bestMod]])-diff(yLim)/10,
+		   # col="black",lwd=2,length=0.03)
+	# arrows(x0=bestMod,
+		   # x1=bestMod,
+		   # y0=min(xval.results[[bestMod]])-2*diff(yLim)/10,
+		   # y1=min(xval.results[[bestMod]])-diff(yLim)/10,
+		   # col="goldenrod1",lwd=1.5,length=0.03)
 	return(pairwise.sigs)
+}
+
+makePartition <- function(N,relMat,nLoci,inTest){
+	trainBlock <- list("N" = N-length(inTest),
+					   "L" = nLoci,
+					   "obsCov" = relMat[-inTest,-inTest])
+	testBlock <- list("N" = length(inTest),
+					   "L" = nLoci,
+					   "obsCov" = relMat[inTest,inTest])
+	return(
+		list("inTest"=inTest,
+			 "train" = trainBlock,
+			 "test" = testBlock)
+	)
+}
+
+whichMod <- function(xval.files){
+	n.models <- length(xval.files)
+	xval.results <- lapply(xval.files,function(n){read.xval.results(n)})
+	nReplicates <- ncol(xval.results[[1]])
+	xval.results <- lapply(xval.results,
+						function(x){
+							if(any(!is.finite(x))){
+								z <- x
+								z[which(!is.finite(x))] <- NA
+								colMeans(z,na.rm=TRUE)
+							} else {
+								colMeans(x)
+							}
+					})
+	nullVibd <- stats::t.test(x=xval.results[[1]],y=xval.results[[2]],paired=TRUE,alternative="less")$p.value
+	nullVibe <- stats::t.test(x=xval.results[[1]],y=xval.results[[3]],paired=TRUE,alternative="less")$p.value
+	nullVibde <- stats::t.test(x=xval.results[[1]],y=xval.results[[4]],paired=TRUE,alternative="less")$p.value
+	ibdVibe <- stats::t.test(x=xval.results[[2]],y=xval.results[[3]],paired=TRUE,alternative="less")$p.value
+	ibdVibde <- stats::t.test(x=xval.results[[2]],y=xval.results[[4]],paired=TRUE,alternative="less")$p.value
+	ibeVibde <- stats::t.test(x=xval.results[[3]],y=xval.results[[4]],paired=TRUE,alternative="less")$p.value
+	#if null is better than IBD and IBE, pick null
+	if(nullVibd > 0.05 & nullVibe > 0.05){
+		bestMod <- "null"
+	}
+	#if ibd is better than null, IBE, and IBDE, pick IBD
+	else if(nullVibd < 0.05 & ibdVibe > 0.05 & ibdVibde > 0.05){
+		bestMod <- "ibd"
+	}
+	#if ibe is better than null, IBD, and IBDE, pick IBE
+	else if(nullVibe < 0.05 & ibdVibe < 0.05 & ibeVibde > 0.05){
+		bestMod <- "ibe"
+	}
+	#if ibde is better than null, IBD, and IBE, pick IBDE
+	else if(nullVibde < 0.05 & ibdVibde < 0.05 & ibeVibde < 0.05){
+		bestMod <- "ibde"
+	}
+	return(bestMod)
 }
 
 ttest.all.mod.xvals <- function(xval.results,n.predictors,n.models){
@@ -177,62 +308,33 @@ ttest.all.mod.xvals <- function(xval.results,n.predictors,n.models){
 	for(i in 1:n.models){
 		for(j in 1:n.models){
 			if(i != j){
-				pairwise.sigs[i,j] <- pairwise.mod.xval.ttest(xval.results[[i]],xval.results[[j]],n.predictors[i],n.predictors[j])
+				pairwise.sigs[i,j] <- pairwise.mod.xval.ttest(xval.results[[i]],xval.results[[j]])
 			}
 		}
 	}
 	return(pairwise.sigs)
 }
 
-groups2labels <- function(groups,n.models){
-	mod.letts <- LETTERS[1:length(groups)]
-	mod.labs <- character(n.models)
-	for(i in 1:length(groups)){
-		for(j in 1:length(groups[[i]])){
-			mod.labs[groups[[i]][j]] <- paste0(mod.labs[groups[[i]][j]],mod.letts[i],collapse="")
-		}
-	}
-	return(mod.labs)
-}
-
 get.sig.groups <- function(pairwise.sigs,n.models){
-	groups <- list("group1"=1)
-	groups[[1]] <- c(groups[[1]],which(pairwise.sigs[1,] > 0.05))
-	n.groups <- 1
+	groupLetters <- c("A",rep("",n.models-1))
+	groupLetters[which(pairwise.sigs[1,] > 0.05)] <- "A"
 	for(i in 2:n.models){
-		if(any(pairwise.sigs[i,] > 0.05,na.rm=TRUE)){
-			groups <- c(groups, i)
-			n.groups <- n.groups + 1
-			names(groups)[length(groups)] <- sprintf("group%s",n.groups)
-			groups[[n.groups]] <- c(groups[[n.groups]],which(pairwise.sigs[i,] > 0.05))
-		} else {
-			groups <- c(groups, i)
-			n.groups <- n.groups + 1
-			names(groups)[length(groups)] <- sprintf("group%s",n.groups)
-		}
-	}
-	groups <- collapse.ident.groups(groups)
-	return(groups)
-}
-
-collapse.ident.groups <- function(groups){
-	n.groups <- length(groups)
-	ident <- matrix(0,n.groups,n.groups)
-	for(i in 1:(n.groups-1)){
-		for(j in (i+1):n.groups){
-			if(setequal(sort(groups[[i]]),sort(groups[[j]]))){
-				ident[i,j] <- 1
+		if(groupLetters[i]==""){
+			groupLetters[i] <- paste0(groupLetters[i],LETTERS[i],collapse="")
+			if(any(pairwise.sigs[i,] > 0.05,na.rm=TRUE)){
+				inGroup <- which(pairwise.sigs[i,] > 0.05)
+				for(j in inGroup){
+					groupLetters[j] <- paste0(groupLetters[j],LETTERS[i],collapse="")
+				}
 			}
 		}
 	}
-	if(any(ident==1)){
-		groups[unique(which(ident==1,arr.ind=TRUE)[,2])] <- NULL
-	}
-	return(groups)
+	return(groupLetters)
 }
 
-pairwise.mod.xval.ttest <- function(xvals1,xvals2,np1,np2){
-	pval <- stats::t.test(x=xvals2,y=xvals1,paired=TRUE,alternative="two.sided")$p.value	
+
+pairwise.mod.xval.ttest <- function(xvals1,xvals2){
+	pval <- stats::t.test(x=xvals2,y=xvals1,paired=TRUE,alternative="two.sided")$p.value
 	return(pval)
 }
 
@@ -283,19 +385,22 @@ check.xval.cols.arg <- function(args){
 
 read.xval.results <- function(xval.file){
 	xval.result <- data.matrix(utils::read.table(xval.file,stringsAsFactors=FALSE,header=TRUE))
+	if(any(!is.finite(xval.result))){
+		xval.result[which(!is.finite(xval.result))] <- NA
+	}
 	return(xval.result)
 }
 
 standardize.xval.results <- function(xval.results){
 	n.models <- length(xval.results)
-	n.replicates <- ncol(xval.results[[1]])
-	n.partitions <- nrow(xval.results[[1]])
-	std.xval.array <- array(NA,dim=c(n.partitions,n.replicates,n.models))
+	nReplicates <- ncol(xval.results[[1]])
+	nPartitions <- nrow(xval.results[[1]])
+	std.xval.array <- array(NA,dim=c(nPartitions,nReplicates,n.models))
 	for(i in 1:n.models){
 		std.xval.array[,,i] <- xval.results[[i]]
 	}
-	for(i in 1:n.partitions){
-		for(j in 1:n.replicates){
+	for(i in 1:nPartitions){
+		for(j in 1:nReplicates){
 			std.xval.array[i,j,] <- std.xval.array[i,j,] - max(std.xval.array[i,j,]) 
 		}
 	}
@@ -304,7 +409,7 @@ standardize.xval.results <- function(xval.results){
 }
 
 summarize.mod.xval <- function(mod.xval.results){
-	xval.mean <- mean(mod.xval.results)
+	xval.mean <- mean(mod.xval.results,na.rm=TRUE)
 	xval.std.err <- stats::sd(mod.xval.results)/sqrt(length(mod.xval.results))
 	xval.CI <- xval.mean + c(-1.96,1.96) * xval.std.err
 	mod.xval.summary <- list("mean" = xval.mean,
@@ -318,49 +423,48 @@ plot.mod.xval.summary <- function(i,mod.xval.summary,mod.col=1){
 	return(invisible("plotted"))
 }
 
-xval.bedassle.rep <- function(rep,n.partitions,geoDist,envDist,nLoci,prefix,n.chains,n.iter,save.files,...){
-	kfold.partitions <- make.kfold.partitions(rep,n.partitions)
-    x.val <- lapply(1:n.partitions,function(k){
-				    message(sprintf("\n\tk-fold cross-validation: analyzing partition %s/%s\n",k,n.partitions));
-        				xval.bedassle.fold(test.partition = rep[[k]],
-        								   nLoci.test = nLoci/n.partitions,
-        								   genDist = kfold.partitions[[k]],
-        								   geoDist = geoDist,
-        								   envDist = envDist,
-        								   nLoci = (n.partitions-1)*(nLoci/n.partitions),
-        								   prefix = paste0(prefix,"part",k),
-        								   n.chains = n.chains,
-        								   n.iter = n.iter,
-        								   save.files,
-        								   ...)
+passDist <- function(a,B=NULL){
+	X <- NULL
+	if(!is.null(B)){
+		if(inherits(B,"matrix")){
+			X <- B[a,a]
+		} else if(inherits(B,"list")){
+			X <- lapply(B,function(b){b[a,a]})
+		}
+	}
+	return(X)
+}
+
+xval.bedassle.rep <- function(rep,nPartitions,geoDist,envDist,nLoci,prefix,n.chains,n.iter,save.files,...){
+    xvals <- lapply(1:nPartitions,function(k){
+				    message(sprintf("\n\tk-fold cross-validation: analyzing partition %s/%s\n",k,nPartitions));
+						N <- rep[[k]]$train$N + rep[[k]]$test$N
+						inTest <- rep[[k]]$inTest
+						inTrain <- c(1:N)[-inTest]
+						train <- list("genDist" = rep[[k]]$train$obsCov,
+									  "geoDist" = passDist(inTrain,geoDist),
+									  "envDist" = passDist(inTrain,envDist),
+									  "L" = nLoci)
+				    		test <- list("genDist" = rep[[k]]$test$obsCov,
+									 "geoDist" = passDist(inTest,geoDist),
+									 "envDist" = passDist(inTest,envDist),
+									 "L" = nLoci)
+        				xval.bedassle(testPart = test,
+    								  trainPart = train,
+        							  prefix = paste0(prefix,"part",k),
+        							  n.chains = n.chains,
+        							  n.iter = n.iter,
+        							  save.files,
+        							  ...)
     			 })
-    names(x.val) <- paste0("partition_", 1:n.partitions)
-    return(unlist(x.val))
+    names(xvals) <- paste0("partition_", 1:nPartitions)
+    return(unlist(xvals))
 }
 
-xval.bedassle.fold <- function(test.partition,nLoci.test,genDist,geoDist=NULL,envDist=NULL,nLoci,prefix,n.chains=2,n.iter=2e3,save.files=FALSE,...) {
-	post.par.cov <- xval.bedassle(genDist = genDist,
-								  geoDist = geoDist,
-								  envDist = envDist,
-								  nLoci = nLoci,
-								  prefix = prefix,
-								  n.chains = n.chains,
-								  n.iter = 2e3,
-								  save.files,
-								  ...)
-	lnL.test.partition <- mean(
-							unlist(
-								lapply(post.par.cov,function(ppc){
-									fit.to.test(test.partition,ppc,nLoci=nLoci.test)
-								})
-							))
-	return(lnL.test.partition)
-}
-
-xval.bedassle <- function(genDist,geoDist=NULL,envDist=NULL,nLoci,prefix,n.chains=2,n.iter=2e3,save.files=FALSE,...) {
-	data.block <- make.data.block(genDist,geoDist,envDist,nLoci,silent=TRUE)
-	stan.model <- pick.stan.model(geoDist,envDist)
-	model.fit <- rstan::sampling(object = stanmodels[[stan.model]],
+xval.bedassle <- function(testPart,trainPart,prefix,n.chains=2,n.iter=2e3,save.files=FALSE,...) {
+	data.block <- make.data.block(trainPart$genDist,trainPart$geoDist,trainPart$envDist,trainPart$L,silent=TRUE)
+	stan.model <- pick.stan.model(trainPart$geoDist,trainPart$envDist)
+	trainFit <- rstan::sampling(object = stanmodels[[stan.model]],
 							 	 refresh = min(n.iter/10,500),
 							 	 data = data.block,
 							 	 iter = n.iter,
@@ -371,40 +475,89 @@ xval.bedassle <- function(genDist,geoDist=NULL,envDist=NULL,nLoci,prefix,n.chain
 	if(save.files){
 		data.block <- unstandardize.distances(data.block)
 		save(data.block,file=paste(prefix,"data.block.Robj",sep="_"))
-		save(model.fit,file=paste(prefix,"model.fit.Robj",sep="_"))
-		bedassle.results <- get.bedassle.results(data.block,model.fit,n.chains)
+		save(trainFit,file=paste(prefix,"model.fit.Robj",sep="_"))
+		bedassle.results <- get.bedassle.results(data.block,trainFit,n.chains)
 		write.bedassle.results(data.block,bedassle.results,prefix,n.chains)
 		make.all.bedassle.plots(paste0(prefix,"_posterior_chain",1:n.chains,".txt"),paste(prefix,"data.block.Robj",sep="_"),prefix)
 	}
-	posterior.par.cov <-lapply(1:n.chains,function(i){get.par.cov(model.fit,i,data.block$N)})
-	return(posterior.par.cov)
+	testFit <- fitToTest(trainFit,data.block,testPart)
+	return(testFit)
 }
 
-load.partitions.file <- function(partitions.file){
+fitToTest <- function(trainFit,data.block,testPart){
+	mod <- pick.stan.model(testPart$geoDist,testPart$envDist)
+	pars <- list("a0" = extract(trainFit,"alpha0",permute=FALSE),
+				 "nugget" = extract(trainFit,"nugget",permute=FALSE))
+	if(mod=="GEO"){
+		pars[["aD"]] <- extract(trainFit,"alphaD",permute=FALSE)
+		pars[["a2"]] <- extract(trainFit,"alpha2",permute=FALSE)
+	}
+	if(mod =="ENV"){
+		pars[["aE"]] <- extract(trainFit,"alphaE",permute=FALSE)
+		pars[["a2"]] <- extract(trainFit,"alpha2",permute=FALSE)
+	}
+	if(mod =="GEOENV"){
+		pars[["aD"]] <- extract(trainFit,"alphaD",permute=FALSE)
+		pars[["aE"]] <- extract(trainFit,"alphaE",permute=FALSE)
+		pars[["a2"]] <- extract(trainFit,"alpha2",permute=FALSE)
+	}
+	ppc <- makePostParCov(nIter=length(pars$a0),
+						  N=nrow(testPart$genDist),
+						  mod=mod,
+						  pars=pars,
+						  nE=data.block$nE,
+						  D=testPart$geoDist,
+						  E=testPart$envDist)
+	lnL <- mean(unlist(
+			lapply(ppc,
+				function(x){
+					wishLnL(df=testPart$L,parCov=x,obsCov=testPart$obsCov)})))
+	return(lnL)
+}
+
+makePostParCov <- function(nIter,N,mod,pars,nE,D=NULL,E=NULL){
+	if(mod=="NULL"){
+		pcPost <- lapply(1:nIter,
+					function(i){
+						pars$a0[i] + diag(pars$nugget[i],N)
+					})
+	} else if (mod=="GEO"){
+		pcPost <- lapply(1:nIter,
+					function(i){
+						pars$a0[i] * exp(-(pars$aD[i]*D)^pars$a2[i]) + diag(pars$nugget[i],N)
+					})
+	} else if (mod=="ENV"){
+		pcPost <- lapply(1:nIter,
+					function(i){
+						pars$a0[i] * exp(-(pars$aE[i]*E)^pars$a2[i]) + diag(pars$nugget[i],N)
+					})
+	} else if (mod=="GEOENV"){
+		pcPost <- lapply(1:nIter,
+					function(i){
+						pars$a0[i] * exp(-(pars$aD[i]*D + pars$aE[i]*E)^pars$a2[i]) + diag(pars$nugget[i],N)
+					})
+	}
+	return(pcPost)
+}
+
+wishLnL <- function(df,parCov,obsCov){
+	invParCov <- chol2inv(chol(parCov))
+	logDet <- determinant(parCov)$modulus[[1]]
+	lnL <- -0.5 * (sum(invParCov * obsCov) + df * logDet)
+	return(lnL)
+}
+
+load.partitions.file <- function(partsFile){
 	tmpenv <- environment()
-	tmp <- load(partitions.file,envir=tmpenv)
+	tmp <- load(partsFile,envir=tmpenv)
 	rep.partitions <- lapply(tmp,get,envir=tmpenv)
 	names(rep.partitions) <- tmp
 	return(rep.partitions[[1]])
 	return(rep.partitions)
 }
 
-make.kfold.partitions <- function(data.partitions,n.partitions){
-	kfold.partitions <- lapply(1:n.partitions,
-							function(k){
-								make.kfold.partition(k,data.partitions,n.partitions)
-							})
-	return(kfold.partitions)
-}
-
-make.kfold.partition <- function(k,data.partitions,n.partitions){
-	data.partitions[[k]] <- NULL
-	kfold.partition <- Reduce("+",data.partitions)/(n.partitions-1)
-	return(kfold.partition)
-}
-
-announce.xval.procedure <- function(n.replicates,n.partitions,L,geoDist,envDist){
-	xval.proc <- sprintf("running %s %s of k-fold cross-validation on:\n\n\t",n.replicates, ifelse(n.replicates>1,"replicates","replicate"))
+announce.xval.procedure <- function(nReplicates,nPartitions,L,geoDist,envDist){
+	xval.proc <- sprintf("running %s %s of k-fold cross-validation on:\n\n\t",nReplicates, ifelse(nReplicates>1,"replicates","replicate"))
 	if(is.null(geoDist) & is.null(envDist)){
 		xval.proc <- paste0(xval.proc,"the \"NULL\" model (neither geographic or environmental distance)")
 	}
@@ -425,11 +578,11 @@ announce.xval.procedure <- function(n.replicates,n.partitions,L,geoDist,envDist)
 	}
 	xval.proc <- paste0(xval.proc,
 					sprintf("\n\nwith %s data partitions, each comprised of %s loci",
-							n.partitions,L/n.partitions))
+							nPartitions,L/nPartitions))
 	return(xval.proc)
 }
 
-write.xvals <- function(xvals,n.replicates,n.partitions,prefix){
+write.xvals <- function(xvals,nReplicates,nPartitions,prefix){
 	utils::write.table(xvals,
 						file=paste0(prefix,"_xval_results.txt"),
 						row.names=FALSE,
@@ -529,11 +682,11 @@ check.xval.call <- function(args){
 }
 
 check.xval.misc.args <- function(args){
-	if(!is.whole.number(args[["n.replicates"]])){
-		stop("\nyou must specify an integer value for the \"n.replicates\" argument\n")	
+	if(!is.whole.number(args[["nReplicates"]])){
+		stop("\nyou must specify an integer value for the \"nReplicates\" argument\n")	
 	}
-	if(!is.whole.number(args[["n.partitions"]])){
-		stop("\nyou must specify an integer value for the \"n.partitions\" argument\n")	
+	if(!is.whole.number(args[["nPartitions"]])){
+		stop("\nyou must specify an integer value for the \"nPartitions\" argument\n")	
 	}
 	if(!is.whole.number(args[["nLoci"]])){
 		stop("\nyou must specify an integer value for the \"nLoci\" argument\n")	
@@ -570,10 +723,10 @@ check.xval.dist.args <- function(args){
 }
 
 check.nLoci.args <- function(args){
-	if(args[["nLoci"]] %% args[["n.partitions"]] != 0){
-		stop("\n\"nLoci\" is not cleanly divisible by \"n.partitions\",\nbut you must have an equal number of loci in each partition\n")
+	if(args[["nLoci"]] %% args[["nPartitions"]] != 0){
+		stop("\n\"nLoci\" is not cleanly divisible by \"nPartitions\",\nbut you must have an equal number of loci in each partition\n")
 	}
-	partition.nLoci <- args[["nLoci"]]/args[["n.partitions"]]
+	partition.nLoci <- args[["nLoci"]]/args[["nPartitions"]]
 	if(!is.null(args[["geoDist"]])){
 		if(nrow(args[["geoDist"]]) >= partition.nLoci){
 			stop("\nyour data must have a greater number of loci than there are samples\n")
@@ -613,8 +766,8 @@ check.for.output.files <- function(args){
 	return(invisible("files checked for"))
 }
 
-check.rep.partitions.arg <- function(rep.partitions,n.replicates,n.partitions,geoDist,envDist){
-	if(length(rep.partitions) != n.replicates){
+check.rep.partitions.arg <- function(rep.partitions,nReplicates,nPartitions,geoDist,envDist){
+	if(length(rep.partitions) != nReplicates){
 		stop("\nthe number of replicates in the \"partitions.file\" argument does not match the number of replicates specified\n")
 	}
 	if(class(rep.partitions) != "list"){
@@ -623,13 +776,13 @@ check.rep.partitions.arg <- function(rep.partitions,n.replicates,n.partitions,ge
 	n.row <- get.nrow(geoDist,envDist)
 	lapply(1:length(rep.partitions),
 		function(i){
-			check.rep(rep.partitions[[i]],sprintf("rep_%s",i),n.partitions,n.row)
+			check.rep(rep.partitions[[i]],sprintf("rep_%s",i),nPartitions,n.row)
 		})
 	return(invisible("rep partitions arg checked"))
 }
 
-check.rep <- function(rep,rep.name,n.partitions,n.row){
-	if(length(rep) != n.partitions){
+check.rep <- function(rep,rep.name,nPartitions,n.row){
+	if(length(rep) != nPartitions){
 		stop(sprintf("\nthe number of partitions in %s of the \"partitions.file\" argument does not match the number of partitions specified\n",rep.name))
 	}
 	if(class(rep) != "list"){

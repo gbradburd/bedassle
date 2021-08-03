@@ -5,9 +5,9 @@
 \title{Run a BEDASSLE cross-validation analysis}
 \usage{
 x.validation(
-  partitions.file,
-  n.replicates,
-  n.partitions,
+  partsFile,
+  nReplicates,
+  nPartitions,
   geoDist = NULL,
   envDist = NULL,
   nLoci,
@@ -21,17 +21,17 @@ x.validation(
 )
 }
 \arguments{
-\item{partitions.file}{A filename (in quotes, 
+\item{partsFile}{A filename (in quotes, 
 with the full file path) to the data partitions object to be used 
 in the k-fold cross-validation procedure.}
 
-\item{n.replicates}{An \code{integer} giving the number of cross-validation
+\item{nReplicates}{An \code{integer} giving the number of cross-validation
 replicates to be run. This should be the same as the length of the list 
-specified in the \code{partitions.file}.}
+specified in the \code{partsFile}.}
 
-\item{n.partitions}{An \code{integer} giving the number of data folds 
+\item{nPartitions}{An \code{integer} giving the number of data folds 
 within each run. This should be the same as the length of each the 
-list specified for each replicate in the \code{partitions.file}.}
+list specified for each replicate in the \code{partsFile}.}
 
 \item{geoDist}{A \code{matrix} of pairwise geographic distances 
 measured between all pairs of samples. A value of 
@@ -47,7 +47,7 @@ distance as a predictor of genetic differentiation.}
 
 \item{nLoci}{The total number of loci across all data partitions
 (the sum across data partitions of the number of loci used in 
-calculating pairwise pi specified in the \code{partitions.file} argument.}
+calculating pairwise pi specified in the \code{partsFile} argument.}
 
 \item{prefix}{A character \code{vector} giving the prefix to be attached 
 to all output files.}
@@ -76,8 +76,8 @@ Default is \code{FALSE}.}
 \item{...}{Further options to be passed to rstan::sampling (e.g., adapt_delta).}
 }
 \value{
-This function returns a matrix with \code{n.replicates} columns and 
-	\code{n.partitions} columns giving the likelihood of each data partition 
+This function returns a matrix with \code{nReplicates} columns and 
+	\code{nPartitions} columns giving the likelihood of each data partition 
 	(averaged over the posterior distribution of the MCMC) in each replicate 
 	analysis. The mean of these values gives an estimate of the predictive 
 	accuracy of the specified model given the data provided. The mean and 
