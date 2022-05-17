@@ -119,7 +119,7 @@ check.call <- function(args){
 }
 
 check.any.dist <- function(distArg,argName){
-	if(class(distArg) != "matrix"){
+	if(!inherits(distArg,"matrix")){
 		stop(sprintf("\nthe \"%s\" argument must be of class \"matrix\"\n",argName))
 	}
 	if(length(unique(dim(distArg))) > 1){
@@ -157,15 +157,15 @@ check.geoDist.arg <- function(args){
 
 check.envDist.arg <- function(args){
 	if(!is.null(args[["envDist"]])){
-		if(class(args[["envDist"]]) != "list" & class(args[["envDist"]]) != "matrix"){
+		if(!inherits(args[["envDist"]],"list") & !inherits(args[["envDist"]],"matrix")){
 			stop("\nthe \"envDist\" argument must either be a matrix or a list of matrices\n")
 		}
-		if(class(args[["envDist"]]) == "matrix"){
+		if(inherits(args[["envDist"]],"matrix")){
 			check.any.dist(distArg = args[["envDist"]],argName="envDist")
 		}
-		if(class(args[["envDist"]]) == "list"){
+		if(inherits(args[["envDist"]],"list")){
 			lapply(args[["envDist"]],function(E){
-				if(class(E) != "matrix"){
+				if(!inherits(E,"matrix")){
 					stop("\neach element of the \"envDist\" list must be of class \"matrix\"\n")
 				}
 				if(length(unique(dim(E))) > 1){
@@ -199,12 +199,12 @@ check.dist.args <- function(args){
 		}
 	}
 	if(!is.null(args[["envDist"]])){
-		if(class(args[["envDist"]]) == "matrix"){
+		if(inherits(args[["envDist"]],"matrix")){
 			if(nrow(args[["envDist"]]) != nrow(args[["genDist"]])){
 				stop("\nthe dimensions of the \"envDist\" argument must match those of the \"genDist\" argument\n")
 			}
 		}
-		if(class(args[["envDist"]]) == "list"){
+		if(inherits(args[["envDist"]],"list")){
 			if(nrow(args[["envDist"]][[1]]) != nrow(args[["genDist"]])){
 				stop("\nthe dimensions of the \"envDist\" distance matrices must match those of the \"genDist\" argument\n")
 			}
@@ -253,7 +253,7 @@ pick.stan.model <- function(geoDist,envDist){
 
 make.envDist.list <- function(envDist){
 	if(!is.null(envDist)){
-		if(class(envDist)=="matrix"){
+		if(inherits(envDist,"matrix")){
 			envDist <- list(envDist)
 		}
 	}

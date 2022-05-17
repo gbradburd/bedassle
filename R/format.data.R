@@ -220,115 +220,6 @@ freqs2pairwisePi <- function(freqs,nLoci=NULL,quiet=FALSE){
 	return(pwp)
 }
 
-#' Create replicate data partitions for k-fold cross-validation
-#' 
-#' \code{freqs2xval} creates a list of data partitions to be 
-#'	used in an n-replicate k-fold cross-validation analysis.
-#'	divides the allele frequency dataset into partitions, and, within each, calculates 
-#'	pairwise pi between samples for use in k-fold cross-validation.
-#'
-#' This function takes an allele frequency data matrix
-#' for a sample of diploid individuals, and, for each cross-validation 
-#' replicate, divides it randomly into \emph{k} partitions and 
-#' calculates pairwise pi between all samples within each partition.
-#' These replicate partitions can then be used in a cross-validation 
-#' analysis.
-#' 
-#' 
-#' @param freqs A \code{matrix} of allele frequencies with 
-#'	one column per locus and one row per sample.
-#' 	Missing data should be indicated with \code{NA}.
-#' @param n.replicates An integer giving the number (n) of cross-validation 
-#'  replicates to be performed. Default is 10.
-#' @param n.partitions An integer giving the number (k) of partitions (folds)
-#'  into which the dataset should be divided for k-fold cross-validation. 
-#'	Default is 10.
-#' @param prefix A character \code{vector} giving the prefix to be attached 
-#'	to the output file of replicated data partitions. An underscore is 
-#'	automatically added between the prefix and the file names.
-#' 
-#' @details For each of \code{n.replicates}, this function divides an 
-#'		allele frequency dataset randomly into \emph{k} equal partitions 
-#'		and, within each, calculates pairwise pi (the proportion of 
-#'		sites at which each pair of samples differs, out of the total 
-#'		number of loci in the dataset) between a set of diploid 
-#'		individuals. For details on how pairwise pi is calculated, see 
-#'		\code{\link{freqs2pairwisePi}}. Pairwise pi within each data partition 
-#'		is saved as a text file, and these can then be used to run a cross-validation 
-#'		analysis with \code{\link{x.validation}}. 
-#'		
-#' 		In each replicate, the entire dataset is divided evenly into the \emph{k}, 
-#'		the number of partitions specified in \code{n.partitions}. If the total number of 
-#'		loci \emph{L} cannot be evenly divided into \emph{k} partitions, the remainder of 
-#'		\emph{L}/\emph{k} loci are dropped from the dataset. Within each partition, 
-#'		there must be more loci than there are samples.
-#'			
-#'	@return This function generates and saves a list of length \code{n.replicates}, 
-#'		each element of which is a list of length \code{n.partitions}. text files, each containing the 
-#'		pairwise pi matrix calculated from its partition of the allele frequency data 
-#'		matrix. These files can then be used for running a k-fold cross-validation 
-#'		analysis using \code{\link{x.validation}}.
-#'		
-#' @export
-
-freqs2xval <- function(freqs,n.replicates=10,n.partitions=10,prefix){
-	check.freqs(freqs)
-	nLoci <- ncol(freqs)
-	loci.per.partition <- nLoci %/% n.partitions
-	if(loci.per.partition < nrow(freqs)){
-		stop("\nyou must have more loci per partition than samples\n")
-	}
-	n.to.drop <- nLoci %% n.partitions
-	if(n.to.drop > 0){
-		freqs <- freqs[,-sample(1:ncol(freqs),n.to.drop)]
-	}
-	announce.partitions(freqs,loci.per.partition,n.replicates,n.partitions,n.to.drop)
-	rep.partitions <- vector("list",length=n.replicates)
-	prog <- utils::txtProgressBar(min=0,max=n.replicates,char="*",style=3)
-	for(n in 1:n.replicates){
-		utils::setTxtProgressBar(prog,n)
-		rep.partitions[[n]] <- freqs2partitions(freqs,n.partitions)
-	}
-	names(rep.partitions) <- paste0("rep_",1:n.replicates)
-	save(rep.partitions,file=paste0(prefix,"_data_partitions.Robj"))
-	return(invisible("data partitions written"))
-}
-
-freqs2partitions <- function(freqs,n.partitions){
-	nLoci <- ncol(freqs)
-	freqs <- freqs[,sample(1:nLoci,nLoci)]
-	partitions <- vector("list",length=n.partitions)
-	loci.per.partition <- nLoci %/% n.partitions
-	partitions.pos <- get.partitions(nLoci,n.partitions,loci.per.partition)
-	for(k in 1:n.partitions){
-		partitions[[k]] <- freqs2pairwisePi(freqs[,partitions.pos[k,1]:partitions.pos[k,2]],loci.per.partition,quiet=TRUE)
-	}
-	names(partitions) <- paste0("fold_",1:n.partitions)
-	return(partitions)
-}
-
-get.partitions <- function(nLoci,n.partitions,loci.per.chunk){
-	starts <- seq(1,nLoci,by=loci.per.chunk)
-	stops <- seq(starts[2]-1,nLoci,by=loci.per.chunk)
-	return(cbind(starts,stops))
-}
-
-announce.partitions <- function(freqs,loci.per.chunk,n.replicates,n.partitions,n.to.drop){
-	message("\nreading data:\n")
-	message(sprintf("\t%s samples\n\tgenotyped at %s loci\n",nrow(freqs),ncol(freqs)))
-	message("\ncreating cross-validation dataset:\n")
-	if(n.to.drop > 0){
-		if(n.to.drop == 1){
-			message("\tdropping 1 locus to get an even number of loci per partition\n")
-		} else {
-			message(sprintf("\tdropping %s loci to get an even number of loci per partition\n",n.to.drop,loci.per.chunk))
-		}
-	}
-	message(sprintf("\tmaking %s replicates, each with:\n",n.replicates))
-	message(sprintf("\t\t%s partitions and %s loci per partition\n",n.partitions,loci.per.chunk))
-	return(invisible("partitions announced"))
-}
-
 calcPWP <- function(ind1,ind2,L){
 	nMD <- ifelse((any(is.na(ind1)) | any(is.na(ind2))),
 				length(unique(which(is.na(ind1)),which(is.na(ind2)))),
@@ -427,7 +318,7 @@ check.pi <- function(pi){
 }
 
 check.freqs <- function(freqs){
-	if(class(freqs) != "matrix"){
+	if(!inherits(freqs,"matrix")){
 		stop("\nthe \"freqs\" argument must be of class \"matrix\"\n")
 	}
 	if(any(freqs > 1,na.rm=TRUE)){

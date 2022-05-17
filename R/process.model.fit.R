@@ -1,10 +1,10 @@
-get.bedassle.results <- function(data.block,model.fit,n.chains){
+get.bedassle.results <- function(data.block,model.fit,nChains){
 	bedassle.results <- stats::setNames(
-							lapply(1:n.chains,
+							lapply(1:nChains,
 								function(i){
 									get.bedassle.chain.results(data.block,model.fit,i)
 								}),
-						  paste0("chain_",1:n.chains))
+						  paste0("chain_",1:nChains))
 	return(bedassle.results)
 }
 
@@ -26,21 +26,21 @@ get.posterior <- function(data.block,model.fit,chain.no){
 	if(is.null(data.block$geoDist) & is.null(data.block$envDist)){
 		posterior <- data.frame("lpd" = rstan::get_logposterior(model.fit)[[chain.no]],
 								"alpha0" = get.alpha0(model.fit,chain.no),
-							    "nuggets" = get.nuggets(model.fit,chain.no,data.block$N))
+							    "nugget" = get.nugget(model.fit,chain.no))
 	}
 	if(!is.null(data.block$geoDist) & is.null(data.block$envDist)){
 		posterior <- data.frame("lpd" = rstan::get_logposterior(model.fit)[[chain.no]],
 								"alpha0" = get.alpha0(model.fit,chain.no),
 							    "alphaD" = get.alphaD(model.fit,chain.no),
 							    "alpha2" = get.alpha2(model.fit,chain.no),
-							    "nuggets" = get.nuggets(model.fit,chain.no,data.block$N))
+							    "nugget" = get.nugget(model.fit,chain.no))
 	}
 	if(is.null(data.block$geoDist) & !is.null(data.block$envDist)){
 		posterior <- data.frame("lpd" = rstan::get_logposterior(model.fit)[[chain.no]],
 								"alpha0" = get.alpha0(model.fit,chain.no),
 							    "alphaE" = get.alphaE(model.fit,chain.no),
 							    "alpha2" = get.alpha2(model.fit,chain.no),
-							    "nuggets" = get.nuggets(model.fit,chain.no,data.block$N))
+							    "nugget" = get.nugget(model.fit,chain.no))
 	}
 	if(!is.null(data.block$geoDist) & !is.null(data.block$envDist)){
 		posterior <- data.frame("lpd" = rstan::get_logposterior(model.fit)[[chain.no]],
@@ -48,13 +48,13 @@ get.posterior <- function(data.block,model.fit,chain.no){
 							    "alphaD" = get.alphaD(model.fit,chain.no),
 							    "alphaE" = get.alphaE(model.fit,chain.no),
 							    "alpha2" = get.alpha2(model.fit,chain.no),
-							    "nuggets" = get.nuggets(model.fit,chain.no,data.block$N))
+							    "nugget" = get.nugget(model.fit,chain.no))
 	}
 	return(posterior)
 }
 
-write.bedassle.results <- function(data.block,bedassle.results,prefix,n.chains){
-	lapply(1:n.chains,
+write.bedassle.results <- function(data.block,bedassle.results,prefix,nChains){
+	lapply(1:nChains,
 		function(i){
 			write.bedassle.chain.results(data.block,bedassle.results[[i]],prefix,i)
 		})
@@ -72,16 +72,16 @@ write.bedassle.chain.results <- function(data.block,chain.bedassle.results,prefi
 
 get.bedassle.result.names <- function(data.block){
 	if(is.null(data.block$geoDist) & is.null(data.block$envDist)){
-		post.names <- c("lpd","alpha0",paste0("nugget_",1:data.block$N))	
+		post.names <- c("lpd","alpha0","nugget")	
 	}
 	if(!is.null(data.block$geoDist) & is.null(data.block$envDist)){
-		post.names <- c("lpd","alpha0","alphaD","alpha2",paste0("nugget_",1:data.block$N))	
+		post.names <- c("lpd","alpha0","alphaD","alpha2","nugget")	
 	}
 	if(is.null(data.block$geoDist) & !is.null(data.block$envDist)){
-		post.names <- c("lpd","alpha0",paste0("alphaE","_",1:data.block$nE),"alpha2",paste0("nugget_",1:data.block$N))	
+		post.names <- c("lpd","alpha0",paste0("alphaE","_",1:data.block$nE),"alpha2","nugget")
 	}
 	if(!is.null(data.block$geoDist) & !is.null(data.block$envDist)){
-		post.names <- c("lpd","alpha0","alphaD",paste0("alphaE","_",1:data.block$nE),"alpha2",paste0("nugget_",1:data.block$N))	
+		post.names <- c("lpd","alpha0","alphaD",paste0("alphaE","_",1:data.block$nE),"alpha2","nugget")	
 	}
 	return(post.names)
 }
@@ -91,9 +91,9 @@ get.par <- function(model.fit,par,chain.no){
 	return(par)
 }
 
-get.nuggets <- function(model.fit,chain.no,N){
-	nuggets <- get.par(model.fit,"nugget",chain.no)
-	return(nuggets)
+get.nugget <- function(model.fit,chain.no){
+	nugget <- get.par(model.fit,"nugget",chain.no)
+	return(nugget)
 }
 
 get.alpha0 <- function(model.fit,chain.no){
@@ -137,13 +137,13 @@ get.MAP.par.cov <- function(data.block,MAP){
 get.cov.function <- function(data.block){
 	if(is.null(data.block$geoDist) & is.null(data.block$envDist)){
 		cov.func <- function(data.block,MAP){
-			return(MAP$alpha0 + diag(MAP[grep("nugget",names(MAP))]))
+			return(MAP$alpha0 + diag(MAP[grep("nugget",names(MAP))],data.block$N))
 		}
 	}
 	if(!is.null(data.block$geoDist) & is.null(data.block$envDist)){
 		cov.func <- function(data.block,MAP){
 			return(MAP$alpha0 * exp(-(MAP$alphaD*data.block$geoDist)^MAP$alpha2) + 
-					diag(MAP[grep("nugget",names(MAP))]))
+					diag(MAP[grep("nugget",names(MAP))],data.block$N))
 		}
 	}
 	if(is.null(data.block$geoDist) & !is.null(data.block$envDist)){
@@ -154,7 +154,7 @@ get.cov.function <- function(data.block){
 									(unlist(MAP[grep("alphaE",names(MAP))])[e]*data.block$envDist[e,,])^2
 								}))
 							)^MAP$alpha2) + 
-					diag(MAP[grep("nugget",names(MAP))]))
+					diag(MAP[grep("nugget",names(MAP))],data.block$N))
 		}
 	}
 	if(!is.null(data.block$geoDist) & !is.null(data.block$envDist)){
@@ -167,7 +167,7 @@ get.cov.function <- function(data.block){
 										(unlist(MAP[grep("alphaE",names(MAP))])[e]*data.block$envDist[e,,])^2
 									}))
 							)^MAP$alpha2) + 
-					diag(unlist(MAP[grep("nugget",names(MAP))])))
+					diag(MAP[grep("nugget",names(MAP))],data.block$N))
 		}
 	}
 	return(cov.func)

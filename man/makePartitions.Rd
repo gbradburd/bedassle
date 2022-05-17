@@ -2,12 +2,12 @@
 % Please edit documentation in R/model.comparison.R
 \name{makePartitions}
 \alias{makePartitions}
-\title{Run a BEDASSLE cross-validation analysis}
+\title{Make the partitions used to run a BEDASSLE cross-validation analysis}
 \usage{
-makePartitions(prefix, nReplicates = 10, nPartitions = 5, N, relMat, nLoci)
+makePartitions(prefix, nReplicates = 10, nPartitions = 5, N)
 }
 \arguments{
-\item{prefix}{A character \code{vector} giving the prefix to be attached 
+\item{prefix}{A \code{character} object giving the prefix to be attached 
 to the output data partitions object to be used in the k-fold 
 cross-validation procedure.}
 
@@ -19,40 +19,23 @@ within each run. The default value is 5.}
 
 \item{N}{An \code{integer} giving the number of samples in the dataset.
 This should have the same value as \code{nrow(geoDist)}.}
-
-\item{relMat}{A \code{matrix} of pairwise genetic distances 
-measured between all pairs of samples.}
-
-\item{nLoci}{The total number of loci in the dataset.}
 }
 \value{
 This function generates and saves a nested list R object (".Robj" file) 
 	that can be used to run a cross-validation analysis. This R object is a list 
 	of length \code{nReplicates}, each element of which is a list of length 
-	\code{nPartitions}. The contents of each of those \code{nPartitions} elements 
-	is given below:
-	\itemize{
-		\item trainBlock
-			\itemize{
-				\item N the number of samples in the training data partition
-				\item L the number of loci in the dataset
-				\item obsCov the pairwise relatedness matrix between 
-					all samples in the training data partition
-			}
-		\item testBlock
-			\itemize{
-				\item N the number of samples in the testing data partition
-				\item L the number of loci in the dataset
-				\item obsCov the pairwise relatedness matrix between 
-					all samples in the testing data partition
-			}
-		\item inTest the indices of the samples in the testing data partition
-	}
+	\code{nPartitions}. Each of those \code{nPartitions} element 
+	is a vector of indices (between 1 and \code{N}) of the random subset 
+	of individuals assigned to that cross-validation partition. 
+	Each of the \code{N} individuals appears in exactly one partition per replicate.
 }
 \description{
-\code{x.validation} runs a BEDASSLE cross-validation analysis
+\code{makePartitions} makes the partitions used to run a BEDASSLE cross-validation analysis
 }
 \details{
 This function initiates a k-fold cross-validation analysis 
 to determine the statistical support for the specified model.
+
+The number of samples \code{N} must be divisible by the specified 
+	number of partitions (\code{nPartitions}).
 }
